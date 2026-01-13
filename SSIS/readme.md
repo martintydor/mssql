@@ -1,0 +1,1 @@
+#Scripts for helping the working with SSIS

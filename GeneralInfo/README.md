@@ -1,0 +1,3 @@
+#Useful scripts for general usage
+
+e.g. active sessions, table size, ...

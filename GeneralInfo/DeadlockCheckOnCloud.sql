@@ -1,0 +1,31 @@
+--Author: Martin Tydor
+--
+--Description:
+--Script for getting basic info about deadlocks if they occurred and were still stored on SDQL server
+--Works on cloud!!!
+
+DECLARE @tracename sysname = N'deadlocks';
+
+WITH ring_buffer AS (
+	SELECT CAST(target_data AS XML) as rb
+	FROM sys.dm_xe_database_sessions AS s 
+	JOIN sys.dm_xe_database_session_targets AS t 
+		ON CAST(t.event_session_address AS BINARY(8)) = CAST(s.address AS BINARY(8))
+	WHERE s.name = @tracename and
+	t.target_name = N'ring_buffer'
+), dx AS (
+	SELECT 
+		dxdr.evtdata.query('.') as deadlock_xml_deadlock_report
+	FROM ring_buffer
+	CROSS APPLY rb.nodes('/RingBufferTarget/event[@name=''database_xml_deadlock_report'']') AS dxdr(evtdata)
+) 
+SELECT 
+	d.query('/event/data[@name=''deadlock_cycle_id'']/value').value('(/value)[1]', 'int') AS [deadlock_cycle_id],
+	d.value('(/event/@timestamp)[1]', 'DateTime2') AS [deadlock_timestamp],
+	d.query('/event/data[@name=''database_name'']/value').value('(/value)[1]', 'nvarchar(256)') AS [database_name],
+	d.query('/event/data[@name=''xml_report'']/value/deadlock') AS deadlock_xml,
+	LTRIM(RTRIM(REPLACE(REPLACE(d.value('.', 'nvarchar(2000)'),CHAR(10),' '),CHAR(13),' '))) as query_text
+FROM dx
+CROSS APPLY deadlock_xml_deadlock_report.nodes('(/event/data/value/deadlock/process-list/process/inputbuf)') AS ib(d)
+ORDER BY [deadlock_timestamp] DESC;
+GO

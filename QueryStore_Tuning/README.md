@@ -1,0 +1,1 @@
+#Scripts for helping the tuning and work with querystore
