@@ -2,7 +2,7 @@
 --
 --Description:
 --Script for getting basic info about deadlocks if they occurred and were still stored on SDQL server
---Works only on cloud!!!
+--Works only on onprem!!!
 
 WITH
       --get full path to current system_health trace file
