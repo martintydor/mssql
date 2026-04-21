@@ -1,0 +1,23 @@
+--compression for tables
+SELECT 
+	 'ALTER TABLE [' + SCHEMA_NAME(t.schema_id) + '].[' + [t].[name] + 
+		'] REBUILD '
+		+ case when c.PartitionCount >1 then ' PARTITION = '+ cast ([p].[partition_number]  as nvarchar(50)) 
+		  else '' end + ' WITH (DATA_COMPRESSION=PAGE);' as Command
+
+FROM [sys].[partitions] AS [p]
+inner join (select [object_id],Max (partition_number) as PartitionCount FROM [sys].[partitions]  group by [object_id]) as c on p.object_id = c.[object_id]
+INNER JOIN sys.tables AS [t] ON [t].[object_id] = [p].[object_id]
+WHERE [p].[index_id] in (0,1) and [p].[data_compression_desc]='NONE'
+union all
+--compression for indexes
+SELECT
+	 'ALTER INDEX ['+ i.name +'] on [' + SCHEMA_NAME(t.schema_id) + '].[' + [t].[name] + 
+		'] REBUILD '
+		+ case when c.PartitionCount >1 then ' PARTITION = '+ cast ([p].[partition_number]  as nvarchar(50)) 
+		  else '' end + ' WITH (DATA_COMPRESSION=PAGE);'
+FROM [sys].[partitions] AS [p]
+inner join (select [object_id],Max (partition_number) as PartitionCount FROM [sys].[partitions]  group by [object_id]) as c on p.object_id = c.[object_id]
+INNER JOIN sys.tables AS [t] ON [t].[object_id] = [p].[object_id]
+INNER JOIN sys.indexes AS [i] ON [i].[object_id] = [p].[object_id] AND [i].[index_id] = [p].[index_id]
+WHERE [p].[index_id] > 1 and [p].[data_compression_desc]='NONE'
